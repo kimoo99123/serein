@@ -55,6 +55,11 @@ egui_system_fonts/fontique and platform font discovery; see docs/dependency-vers
 for the exact added dependency versions and declared licenses. OS emoji fonts
 remain installed system resources and are not bundled or redistributed.
 
+The local epaint Arabic bidirectional-layout patch adds **unicode-bidi 0.3.18**
+(MIT OR Apache-2.0). Its unmodified license texts are staged under
+`assets/licenses/dependencies`; the crate archive checksum is recorded in
+`Cargo.lock` and `assets/licenses/dependencies/PROVENANCE.md`.
+
 Linux login uses gtk4 0.11.4, webkit6 0.6.1, javascriptcore6 0.6.0, glib 0.22.9 and soup3
 0.9.0 Rust bindings (MIT). Windows/macOS retain Wry 0.57.0 (MIT OR Apache-2.0) via a documented
 manifest/build patch excluding obsolete Linux dependencies; backend sources are unchanged.

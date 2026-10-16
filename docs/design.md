@@ -52,7 +52,11 @@ the bundled Noto CJK/Arabic fallbacks follow in every family. egui has no synthe
 `design::semibold`/`design::medium` select the heavier families for author names, headings,
 channel names and uppercase 12px eyebrows. Body is 15px, small 12px. Until `fonts::install`
 marks a context, the weight families resolve to the default face so headless tests never
-reference an unknown family.
+reference an unknown family. Arabic uses the bundled Noto face with Unicode bidirectional
+ordering and OpenType shaping; stored/copyable text remains in logical order. Offline layout
+tests cover Arabic shaping, mixed Arabic/Latin text, numbers, URLs, emoji, wrapping and caret
+positions. Native rendering, IME behavior and accessibility remain platform-specific and
+unverified.
 
 ## Layout
 

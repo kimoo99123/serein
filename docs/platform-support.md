@@ -48,6 +48,11 @@ Apple Color Emoji was visually checked with a synthetic moon status on September
 10, 2026. Windows/Linux emoji coverage is unverified and depends on installed fonts
 (e.g. Segoe UI Emoji / Noto Color Emoji); no OS font is redistributed.
 
+Arabic text uses the bundled Noto Sans Arabic font, so glyph coverage does not depend on an
+installed Arabic font. Unicode bidirectional layout and Arabic shaping have offline regression
+coverage; native rendering, keyboard/IME behavior and accessibility have not been verified on
+each target platform.
+
 
 ## Camera capture (September 12, 2026)
 
