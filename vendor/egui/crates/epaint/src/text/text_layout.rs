@@ -1010,6 +1010,16 @@ fn apply_bidi_to_rows(
                 cursor_x += glyph.advance_width;
             }
         }
+        let min_x = row
+            .glyphs
+            .iter()
+            .map(|glyph| glyph.pos.x)
+            .fold(f32::INFINITY, f32::min);
+        if min_x < 0.0 {
+            for glyph in &mut row.glyphs {
+                glyph.pos.x -= min_x;
+            }
+        }
     }
 }
 
@@ -2214,11 +2224,24 @@ mod tests {
                 "/../../../../assets/fonts/NotoSansArabic.ttf"
             )))),
         );
+        let hebrew = "Noto Sans Hebrew".to_owned();
+        definitions.font_data.insert(
+            hebrew.clone(),
+            Arc::new(FontData::from_static(include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../../../assets/fonts/NotoSansHebrew.ttf"
+            )))),
+        );
         definitions
             .families
             .entry(FontFamily::Proportional)
             .or_default()
             .push(arabic);
+        definitions
+            .families
+            .entry(FontFamily::Proportional)
+            .or_default()
+            .push(hebrew);
 
         let mut fonts = FontsImpl::new(TextOptions::default(), definitions);
         for text in [
@@ -2226,6 +2249,8 @@ mod tests {
             "مرحبا Discord",
             "Visit https://example.com, then مرحبا!",
             "مرحبا 😀 42!",
+            "שלום Serein 123",
+            "שלום مرحبا https://example.com 😀",
         ] {
             let job = LayoutJob::simple(
                 text.into(),
@@ -2240,6 +2265,10 @@ mod tests {
             let row = &galley.rows[0].row;
             assert_eq!(row.text(), text);
             assert_eq!(row.char_count_excluding_newline().0, text.chars().count());
+            assert!(
+                row.glyphs.iter().all(|glyph| glyph.pos.x >= -0.1),
+                "glyphs must stay inside the row for {text:?}"
+            );
             for cursor_index in 0..=text.chars().count() {
                 let cursor = galley.pos_from_cursor(CCursor::new(cursor_index));
                 assert!(cursor.min.x.is_finite() && cursor.min.y.is_finite());
@@ -2300,7 +2329,7 @@ mod tests {
     }
 
     #[test]
-    fn arabic_glyphs_and_caret_follow_right_to_left_order() {
+    fn rtl_glyphs_and_caret_follow_right_to_left_order() {
         let mut definitions = FontDefinitions::default();
         let arabic = "Noto Sans Arabic".to_owned();
         definitions.font_data.insert(
@@ -2310,36 +2339,42 @@ mod tests {
                 "/../../../../assets/fonts/NotoSansArabic.ttf"
             )))),
         );
+        let hebrew = "Noto Sans Hebrew".to_owned();
+        definitions.font_data.insert(
+            hebrew.clone(),
+            Arc::new(FontData::from_static(include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../../../assets/fonts/NotoSansHebrew.ttf"
+            )))),
+        );
         definitions
             .families
-            .insert(FontFamily::Proportional, vec![arabic]);
+            .insert(FontFamily::Proportional, vec![arabic, hebrew]);
 
         let mut fonts = FontsImpl::new(TextOptions::default(), definitions);
-        let text = "لا";
-        let galley = layout_simple(&mut fonts, text);
-        let row = &galley.rows[0].row;
-        assert_eq!(row.text(), text);
-        assert_eq!(row.char_count_excluding_newline().0, text.chars().count());
-        assert!(row.glyphs.iter().any(|glyph| glyph.advance_width > 0.0));
+        for text in ["لا", "مرحبا", "שלום"] {
+            let galley = layout_simple(&mut fonts, text);
+            let row = &galley.rows[0];
+            assert_eq!(row.text(), text);
+            assert_eq!(row.char_count_excluding_newline().0, text.chars().count());
+            assert!(row.glyphs.iter().any(|glyph| glyph.advance_width > 0.0));
 
-        let start = galley.pos_from_cursor(CCursor::new(0)).center().x;
-        let end = galley
-            .pos_from_cursor(CCursor::new(text.chars().count()))
-            .center()
-            .x;
-        assert!(
-            start > end,
-            "logical start of Arabic text should be on the right"
-        );
+            let start = galley.pos_from_cursor(CCursor::new(0)).center().x;
+            let end = galley
+                .pos_from_cursor(CCursor::new(text.chars().count()))
+                .center()
+                .x;
+            assert!(
+                start > end,
+                "logical start should be on the right for {text:?}"
+            );
 
-        let text = "مرحبا";
-        let galley = layout_simple(&mut fonts, text);
-        let row = &galley.rows[0];
-        for index in 0..=text.chars().count() {
-            let cursor = galley.pos_from_cursor(CCursor::new(index));
-            assert!(cursor.min.x.is_finite() && cursor.min.y.is_finite());
-            let actual = row.row.char_at(cursor.center().x);
-            assert_eq!(actual.0, index, "caret round-trip at logical index {index}");
+            for index in 0..=text.chars().count() {
+                let cursor = galley.pos_from_cursor(CCursor::new(index));
+                assert!(cursor.min.x.is_finite() && cursor.min.y.is_finite());
+                let actual = row.row.char_at(cursor.center().x);
+                assert_eq!(actual.0, index, "caret round-trip for {text:?} at {index}");
+            }
         }
     }
 

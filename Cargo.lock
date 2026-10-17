@@ -7063,6 +7063,7 @@ dependencies = [
  "test-support",
  "time",
  "tz-rs",
+ "unicode-bidi",
  "unicode-segmentation",
  "url",
 ]
