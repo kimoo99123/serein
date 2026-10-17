@@ -172,26 +172,46 @@ impl Layout {
 		let mut next = 0;
 		for placed in &mut galley_mut.rows {
 			let row = Arc::make_mut(&mut placed.row);
+			let original_char_count = row.char_count_excluding_newline().0;
+			let mut char_count = original_char_count;
+			let mut inserted_chars = 0;
 			let mut glyphs = Vec::with_capacity(row.glyphs.len());
-			for glyph in &row.glyphs {
-				if let Some(inline) = self.inlines.get(next).filter(|i| i.projected == projected) {
+			let mut glyph_index = 0;
+			while glyph_index < row.glyphs.len() {
+				let logical_index = row.glyphs[glyph_index].logical_index();
+				let group_end = row.glyphs[glyph_index..]
+					.iter()
+					.position(|glyph| glyph.logical_index() != logical_index)
+					.map_or(row.glyphs.len(), |offset| glyph_index + offset);
+				if let Some(inline) = self
+					.inlines
+					.get(next)
+					.filter(|inline| inline.projected == projected + logical_index)
+				{
 					let count = inline.source.len();
+					let left = row.glyphs[glyph_index].pos.x - inline.width;
 					for (index, chr) in chars[inline.source.clone()].iter().enumerate() {
-						let mut slot = *glyph;
+						let mut slot = row.glyphs[glyph_index];
 						slot.chr = *chr;
-						slot.pos.x =
-							glyph.pos.x - inline.width + inline.width * index as f32 / count as f32;
+						slot.set_logical_index(logical_index + inserted_chars + index);
+						slot.pos.x = left + inline.width * index as f32 / count as f32;
 						slot.advance_width = inline.width / count as f32;
 						glyphs.push(slot);
 					}
+					char_count += count - 1;
+					inserted_chars += count - 1;
 					next += 1;
 				} else {
-					glyphs.push(*glyph);
+					for glyph in &row.glyphs[glyph_index..group_end] {
+						let mut glyph = *glyph;
+						glyph.set_logical_index(logical_index + inserted_chars);
+						glyphs.push(glyph);
+					}
 				}
-				projected += 1;
+				glyph_index = group_end;
 			}
-			row.glyphs = glyphs;
-			projected += usize::from(placed.ends_with_newline);
+			row.set_glyphs(glyphs, char_count);
+			projected += original_char_count + usize::from(placed.ends_with_newline);
 		}
 		// TextEdit's galley and TextBuffer must expose exactly the same original characters.
 		galley_mut.job = Arc::new(LayoutJob::simple(text.to_owned(), font, colors.text, width));

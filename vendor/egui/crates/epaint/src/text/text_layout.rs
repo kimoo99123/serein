@@ -136,6 +136,13 @@ pub(crate) fn layout(fonts: &mut FontsImpl, pixels_per_point: f32, job: Arc<Layo
     }
 
     for paragraph in &mut paragraphs {
+        if paragraph
+            .glyphs
+            .iter()
+            .all(|glyph| glyph.bidi_level % 2 == 0)
+        {
+            continue;
+        }
         paragraph.glyphs.sort_by_key(|glyph| glyph.logical_index);
         let mut cursor_x = paragraph
             .glyphs
@@ -181,7 +188,6 @@ pub(crate) fn layout(fonts: &mut FontsImpl, pixels_per_point: f32, job: Arc<Layo
     }
 
     apply_bidi_to_rows(&mut rows, &bidi, &job.text, &char_byte_offsets);
-
     // Calculate the Y positions and tessellate the text:
     galley_from_rows(point_scale, job, rows, elided, intrinsic_size)
 }

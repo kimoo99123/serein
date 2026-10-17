@@ -942,6 +942,18 @@ pub struct Glyph {
 }
 
 impl Glyph {
+    /// Logical character index within its row.
+    #[inline]
+    pub fn logical_index(&self) -> usize {
+        self.logical_index
+    }
+
+    /// Update the logical character index after custom glyph layout.
+    #[inline]
+    pub fn set_logical_index(&mut self, index: usize) {
+        self.logical_index = index;
+    }
+
     #[inline]
     pub fn size(&self) -> Vec2 {
         Vec2::new(self.advance_width, self.line_height)
@@ -962,6 +974,12 @@ impl Glyph {
 // ----------------------------------------------------------------------------
 
 impl Row {
+    /// Replace row glyphs and their logical character count together.
+    pub fn set_glyphs(&mut self, glyphs: Vec<Glyph>, char_count: usize) {
+        self.glyphs = glyphs;
+        self.char_count = char_count;
+    }
+
     /// The text on this row, excluding the implicit `\n` if any.
     pub fn text(&self) -> String {
         let mut text = String::with_capacity(self.char_count);
@@ -986,9 +1004,9 @@ impl Row {
     pub fn char_at(&self, desired_x: f32) -> CharIndex {
         (0..=self.char_count)
             .min_by(|left, right| {
-                (desired_x - self.x_offset(CharIndex(*left))).abs().total_cmp(
-                    &(desired_x - self.x_offset(CharIndex(*right))).abs(),
-                )
+                (desired_x - self.x_offset(CharIndex(*left)))
+                    .abs()
+                    .total_cmp(&(desired_x - self.x_offset(CharIndex(*right))).abs())
             })
             .map_or(CharIndex::ZERO, CharIndex)
     }
@@ -1004,9 +1022,15 @@ impl Row {
         let group = &self.glyphs[first.min(self.glyphs.len())..end.min(self.glyphs.len())];
         if let Some(glyph) = group.first() {
             if glyph.bidi_level % 2 == 1 {
-                group.iter().map(Glyph::max_x).fold(f32::NEG_INFINITY, f32::max)
+                group
+                    .iter()
+                    .map(Glyph::max_x)
+                    .fold(f32::NEG_INFINITY, f32::max)
             } else {
-                group.iter().map(|glyph| glyph.pos.x).fold(f32::INFINITY, f32::min)
+                group
+                    .iter()
+                    .map(|glyph| glyph.pos.x)
+                    .fold(f32::INFINITY, f32::min)
             }
         } else if let Some(glyph) = self.glyphs.last() {
             if column.0 < self.char_count && glyph.logical_index >= logical_index {
